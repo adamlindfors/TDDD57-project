@@ -6,6 +6,7 @@ const renderer = new THREE.WebGLRenderer({ canvas: animation_canvas });
 renderer.setSize(680, 720);
 
 graphicsCamera.position.z = 5;
+graphicsCamera.position.x = 2
 
 
 // Lights
@@ -28,8 +29,8 @@ floor.position.z = -10;
 floor.position.y = -5;
 
 const geometry = new THREE.SphereGeometry( 0.05, 32, 32 );
-const rightMaterial = new THREE.MeshBasicMaterial( {color: 0x00ff1e} );
-const leftMaterial = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+const rightMaterial = new THREE.MeshBasicMaterial( {color: 0x2F32FA} );
+const leftMaterial = new THREE.MeshBasicMaterial( {color: 0xFF0000} );
 const rightSphere = new THREE.Mesh( geometry, rightMaterial );
 const leftSphere = new THREE.Mesh( geometry, leftMaterial );
 

@@ -1,6 +1,9 @@
 const videoElement = document.getElementsByClassName('input_video')[0];
 const canvasElement = document.getElementsByClassName('output_canvas')[0];
 const canvasCtx = canvasElement.getContext('2d');
+const textureLoader = new THREE.TextureLoader()
+textureLoader.crossOrigin = "Anonymous"
+const ammoTexture = textureLoader.load("battery_white.png")
 
 
     /* Mediapipe Pose list 
@@ -9,48 +12,68 @@ const canvasCtx = canvasElement.getContext('2d');
     Left elbow = 13
     Right elbow = 14
     */
-
-// QUEUE CODE-------------------------------------------------
-
-function Queue() {
-  this.elementsX = [];
-  this.elementsY = [];
+var monster = function(){
+  this.position = new THREE.Vector3(10, 0, 0);
+  this.velocity = new THREE.Vector3(-1,0,0);
+  this.geometry = new THREE.BoxGeometry( 1, 1, 1 );
+  this.material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+  this.mesh = new THREE.Mesh( this.geometry, this.material );
+  this.mesh.position.set(this.position.x, this.position.y, this.position.z);
+  this.boundingBox = new THREE.Box3();
+  this.mesh.geometry.computeBoundingBox();
 }
-Queue.prototype.enqueue = function (e1, e2) {
-  this.elementsX.push(e1);
-  this.elementsY.push(e2);
-};
-Queue.prototype.dequeue = function () {
-  this.elementsX.shift();
-  this.elementsY.shift();
-};
-Queue.prototype.isEmpty = function () {
-  if(this.elementsX.length == 0 && this.elementsY.length == 0){
-    return true
+monster.prototype = {
+  update: function(){
+    var tempVel = new THREE.Vector3(this.velocity.x, this.velocity.y, this.velocity.y);
+    this.position.add(tempVel.multiplyScalar(0.03));
+    this.mesh.position.set(this.position.x, this.position.y, this.position.z);
   }
-  return false
-};
-Queue.prototype.peek = function () {
-  return [!this.isEmpty() ? this.elementsX[0] : undefined, !this.isEmpty() ? this.elementsY[0] : undefined];
-};
-Queue.prototype.length = function() {
-  return this.elementsX.length;
 }
-// QUEUE CODE-------------------------------------------------
+var monster1 = new monster();
+scene.add(monster1.mesh);
 
-Number.prototype.map = function (in_min, in_max, out_min, out_max) {
-  return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
 
 var ammoBox = function() {
-  this.position = new THREE.Vector3(0,-5,0);
-  this.geometry = new THREE.CircleGeometry( 0.4, 18 );
-  this.material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+  this.position = new THREE.Vector3(0,-1,0);
+  this.radius = 0.4;
+  this.red = 0;
+  this.green = 1;
+  this.blue = 0;
+  this.scale = 1.0;
+  this.geometry = new THREE.CircleGeometry( this.radius, 18 );
+  this.material = new THREE.MeshBasicMaterial( { map:ammoTexture, color:"rgb(${this.red}, ${this.green}, ${this.blue})" } );
   this.mesh = new THREE.Mesh( this.geometry, this.material );  
+  this.mesh.position.set(this.position.x, this.position.y, this.position.z);
+  this.box = new THREE.Box3();
+  this.mesh.geometry.computeBoundingBox();
 }
-var ammobox = new ammoBox();
-scene.add(ammobox.mesh);
-console.log(ammobox);
+ammoBox.prototype = {
+  giveAmmo: function(myCannon) {
+        this.red += 0.05*myCannon.rgb.x;
+        this.green -= 0.05*this.green;
+        this.blue += 0.05*myCannon.rgb.z;
+        this.scale += 0.005;
+        if(this.scale > 1.1){
+          this.scale = 1.1;
+        }
+        if(this.red > 1.0) {
+          this.red = 1.0;
+        }
+        if(this.blue > 1.0) {
+          this.blue = 1.0;
+        }
+        this.material.color.setRGB(this.red, this.green, this.blue);
+        this.mesh.scale.set(this.scale, this.scale, this.scale);
+        if(this.red == 1.0 || this.blue == 1.0) {
+          myCannon.numberOfAmmo = 100;
+        }
+        
+  }
+}
+
+
+var test = new ammoBox();
+scene.add(test.mesh);
 
 var particle = function(material){
   this.ammoGeometry = new THREE.SphereGeometry(0.09, 6, 6);
@@ -66,7 +89,7 @@ particle.prototype = {
     if(this.lifeLength < 0.0){
       this.position.set(startPos.x, startPos.y, startPos.z);
       this.mesh.position.set(startPos.x, startPos.y, startPos.z);
-      this.lifeLength = 5.0;
+      this.lifeLength = Math.random();
       var tempVel = new THREE.Vector3(startPos.x - forearmLandmark.x, 
                                       startPos.y - -(forearmLandmark.y), 
                                       0.0);
@@ -82,13 +105,16 @@ particle.prototype = {
   }
 }
 
-var handCannon = function(mesh, material, side){
+var handCannon = function(mesh, material, side, rgb){
   this.side = side;
+  this.rgb = rgb;
 	this.position = new THREE.Vector3(0,0,0);
   this.numberOfAmmo = 100;
   this.mesh = mesh;
   this.ammo = [];
   this.ammoMaterial = material;
+  this.box = new THREE.Box3();
+  this.mesh.geometry.computeBoundingBox();
 }
 handCannon.prototype = {
   loadParticles: function(){
@@ -96,15 +122,17 @@ handCannon.prototype = {
       this.ammo.push(new particle(this.ammoMaterial));
       scene.add(this.ammo[this.ammo.length - 1].mesh);
     }
+    this.numberOfAmmo = 0;
   },
   moveCannon: function(handLandmark){
     this.position.set(handLandmark.x, -handLandmark.y, 0);
     this.mesh.position.set(handLandmark.x, -handLandmark.y, 0);
+    this.box.copy( this.mesh.geometry.boundingBox ).applyMatrix4( this.mesh.matrixWorld );
   }
 }
 
-var leftHandCannon = new handCannon(leftSphere, leftMaterial , "left");
-var rightHandCannon = new handCannon(rightSphere, rightMaterial , "right");
+var leftHandCannon = new handCannon(leftSphere, leftMaterial , "left", new THREE.Vector3(1,0,0));
+var rightHandCannon = new handCannon(rightSphere, rightMaterial , "right", new THREE.Vector3(0,0,1));
 rightHandCannon.loadParticles();
 leftHandCannon.loadParticles();
 var cannons = [];
@@ -141,16 +169,22 @@ function onResults(results) {
       cannons[i].ammo[j].update();
     }
   }
-  /*for(var i = 0; i < rightHandCannon.ammo.length; i++) {
-    if(rightHandCannon.numberOfAmmo > 0 && rightHandCannon.ammo[i].lifeLength <= 0.0) {
-      rightHandCannon.ammo[i].respawn(rightHandCannon.position, results.poseLandmarks[14]);
-      rightHandCannon.numberOfAmmo -= 1;
-      if(rightHandCannon.numberOfAmmo <= 0) {
-        rightHandCannon.numberOfAmmo = 0;
-      }
-    }
-    rightHandCannon.ammo[i].update();
-  }*/
+  if(test.box.intersectsBox(rightHandCannon.box) && !test.box.intersectsBox(leftHandCannon.box)){
+    test.giveAmmo(rightHandCannon);
+  } else if(test.box.intersectsBox(leftHandCannon.box) && !test.box.intersectsBox(rightHandCannon.box)) {
+    test.giveAmmo(leftHandCannon);
+  } else if(!test.box.intersectsBox(leftHandCannon.box) && !test.box.intersectsBox(rightHandCannon.box)) {
+    test.mesh.scale.set(1.0,1.0,1.0);
+    test.red = 0;
+    test.green = 1;
+    test.blue = 0;
+    test.scale = 1.0;
+    test.material.color.setRGB(test.red, test.green, test.blue);
+  }
+  
+  test.box.copy( test.mesh.geometry.boundingBox ).applyMatrix4( test.mesh.matrixWorld );
+  monster1.update();
+  console.log(monster1.position);
 }
 
 
