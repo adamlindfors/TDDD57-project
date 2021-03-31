@@ -12,6 +12,12 @@ const redMonsterTexture2 = textureLoader.load("images/red-monster2.png");
 const redMonsterTexture3 = textureLoader.load("images/red-monster3.png");
 const leftHandTexture = textureLoader.load("images/left-hand.png");
 const rightHandTexture = textureLoader.load("images/right-hand.png");
+const barrier1 = textureLoader.load("images/barrier-1.png");
+const barrier2 = textureLoader.load("images/barrier-2.png");
+const barrier3 = textureLoader.load("images/barrier-3.png");
+const barrier4 = textureLoader.load("images/barrier-4.png");
+const barrier5 = textureLoader.load("images/barrier-5.png");
+const endScreenTexture = textureLoader.load("images/game-over1.png");
 var monstereDeath = new Audio('Audio/monsterDeath.wav');
 var cannonFire = new Audio('Audio/cannon.flac');
 
@@ -21,6 +27,31 @@ var cannonFire = new Audio('Audio/cannon.flac');
     Left elbow = 13
     Right elbow = 14
     */
+
+  var playerHealth = 5;
+  var barrierGeometry = new THREE.PlaneGeometry( 3.0, 4.0, 1.0 );
+  var barrierMaterial5 = new THREE.MeshBasicMaterial( {map: barrier5, alphaTest: 0.5} );
+  var barrierMesh5 = new THREE.Mesh( barrierGeometry, barrierMaterial5 );
+  barrierMesh5.position.set(0, -1, 0);
+  var barrierMaterial4 = new THREE.MeshBasicMaterial( {map: barrier4, alphaTest: 0.5} );
+  var barrierMesh4 = new THREE.Mesh( barrierGeometry, barrierMaterial4 );
+  barrierMesh4.position.set(0, -100, 0);
+  var barrierMaterial3 = new THREE.MeshBasicMaterial( {map: barrier3, alphaTest: 0.5} );
+  var barrierMesh3 = new THREE.Mesh( barrierGeometry, barrierMaterial3 );
+  barrierMesh3.position.set(0, -100, 0);
+  var barrierMaterial2 = new THREE.MeshBasicMaterial( {map: barrier2, alphaTest: 0.5} );
+  var barrierMesh2= new THREE.Mesh( barrierGeometry, barrierMaterial2 );
+  barrierMesh2.position.set(0, -100, 0);
+  var barrierMaterial1 = new THREE.MeshBasicMaterial( {map: barrier1, alphaTest: 0.5} );
+  var barrierMesh1 = new THREE.Mesh( barrierGeometry, barrierMaterial1 );
+  barrierMesh1.position.set(0, -100, 0);
+  scene.add(barrierMesh5, barrierMesh4, barrierMesh3, barrierMesh2, barrierMesh1);
+
+  var endScreenGeometry = new THREE.PlaneGeometry( 6.0, 10.0, 1.0 );
+  var endScreenMaterial = new THREE.MeshBasicMaterial( {map: endScreenTexture, alphaTest: 0.5} );
+  var endScreenMesh = new THREE.Mesh( endScreenGeometry, endScreenMaterial );
+  endScreenMesh.position.set(100,100,100);
+  scene.add(endScreenMesh);
 
 var monster = function(texture, color){
   this.position = new THREE.Vector3(Math.random() * (10 - 7) + 7, Math.random() * (2 - (-2)) -2, 0);
@@ -149,8 +180,8 @@ var ammoHand = function(pos, texture) {
   scene.add(this.mesh);
 }
 
-var leftAmmoHand = new ammoHand(new THREE.Vector3(-2, 5, -3), leftHandTexture);
-var rightAmmoHand = new ammoHand(new THREE.Vector3(0, 5, -3), rightHandTexture);
+var leftAmmoHand = new ammoHand(new THREE.Vector3(0, 5, -3), rightHandTexture);
+var rightAmmoHand = new ammoHand(new THREE.Vector3(-2, 5, -3), leftHandTexture);
 
 var myAmmoBox = new ammoBox();
 scene.add(myAmmoBox.mesh);
@@ -261,6 +292,31 @@ function onResults(results) {
       }
     }
   }
+  for(var i = 0; i < monsters.length; i++){
+    if(monsters[i].position.x < -1) {
+      monsters[i].respawn();
+      playerHealth -= 1;
+    }
+    if(playerHealth == 4) {
+      barrierMesh5.position.set(0,-100,0);
+      barrierMesh4.position.set(0,-1,0);
+    }else if(playerHealth == 3){
+      barrierMesh4.position.set(0,-100,0);
+      barrierMesh3.position.set(0,-1,0);
+    }else if(playerHealth == 2){
+      barrierMesh3.position.set(0,-100,0);
+      barrierMesh2.position.set(0,-1,0);
+    }else if(playerHealth == 1){
+      barrierMesh2.position.set(0,-100,0);
+      barrierMesh1.position.set(0,-1,0);
+    }else if(playerHealth < 1) {
+      monsters[i].mesh.geometry.dispose();
+      monsters[i].mesh.material.dispose();
+      scene.remove(monsters[i]);
+      endScreenMesh.position.set(2,0,0);
+    }
+  }
+
   if(myAmmoBox.box.intersectsBox(rightHandCannon.box) && !myAmmoBox.box.intersectsBox(leftHandCannon.box)){
     myAmmoBox.giveAmmo(rightHandCannon);
   } else if(myAmmoBox.box.intersectsBox(leftHandCannon.box) && !myAmmoBox.box.intersectsBox(rightHandCannon.box)) {
